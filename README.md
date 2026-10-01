@@ -1,54 +1,35 @@
 # opentelemetry-godot-project
 
-Integration test for the `open_telemetry` Godot module.  Sends real OTLP
-traces, metrics, and logs to a standard OpenTelemetry Collector and verifies
-the connection end-to-end.
+A godot-sandbox guest that encodes Godot's spans, logs and gauges as OTLP, tested round trip against the telemetry stores.
 
-## Prerequisites
+`project/telemetry.elf` is the C++ guest. Its OTLP messages are generated from the official `.proto`
+schema (v1.11.1) by `protoc` 36.2's upb generators, and the upb runtime is compiled in, so no encoder is
+written by hand. It keeps the archived module's API (`init_tracer_provider`, `start_span`,
+`start_span_with_parent`, `add_event`, `set_attributes`, `record_error`, `end_span`, `shutdown`) and adds
+`log`, `gauge`, `set_clock`, `seed_ids` and `export_traces` / `export_logs` / `export_metrics`, which
+return the request bytes. Guests have no sockets, so the host posts them.
 
-| Tool | Purpose |
-|---|---|
-| Custom Godot build | `opentelemetry-godot` with `open_telemetry` module |
-| Docker + Compose | Runs the collector stack |
+## Build
 
-Build the Godot binary if you haven't already:
+    pixi install
+    pixi run sh -c 'PATH=<clang with a riscv64 target>:$PATH elixir tools/build.exs'
 
-```sh
-cd ../opentelemetry-godot
-scons target=editor dev_mode=yes arch=arm64 -j11
-```
+The build fetches the schema and protobuf at pinned commits, generates the code, and cross-builds
+`telemetry.elf` and `telemetry_planted.elf` (the same guest with three fields renumbered) against the
+manifest's `5-repository/riscv64-sysroot` and `contract-guest-runtime`'s sandbox API. Two builds give
+the same bytes.
 
-## Quick start
+## Test
 
-```sh
-cd opentelemetry-godot-project
-./run_test.sh
-```
+    GODOT=<an engine that loads the pen's godot_sandbox addon> tools/run_tests.sh
 
-This starts the collector stack, runs all tests, and prints a pass/fail
-summary.  Traces appear in Jaeger at **http://localhost:16686** — search for
-service **godot-otel-test**.
+The run starts the three stores from pinned, sha256-checked releases. It then makes three runs:
+- **as built:** a span, a log and a gauge each pass a unit, a falsifiable and an identity test;
+- **planted wrong-field guest:** the three unit tests must fail;
+- **as built, posted to a closed port:** the three unit tests must fail.
 
-## Stack
+It exits 0 only when all three runs go that way. The posted bytes also go through `protoc --decode`.
 
-```
-Godot (OTLP/HTTP :4318)
-  └─► otelcol-contrib  (receiver → batch → exporter)
-        ├─► Jaeger all-in-one  http://localhost:16686
-        └─► debug exporter     (stdout of otelcol container)
-```
-
-| Service | Port | URL |
-|---|---|---|
-| OTLP/HTTP receiver | 4318 | `http://localhost:4318` |
-| OTLP/gRPC receiver | 4317 | — |
-| Jaeger UI | 16686 | http://localhost:16686 |
-| otelcol zPages | 55679 | http://localhost:55679/debug/tracez |
-
-Start / stop independently:
-
-```sh
-docker compose up -d      # start
-docker compose down       # stop and remove containers
-docker compose logs -f    # stream collector logs
-```
+The pen's addon is double-precision, and godot-sandbox there corrupts numbers read out of a Dictionary
+or Array. The guest reads keys one at a time and numbers through packed arrays until the addon's fix
+lands.

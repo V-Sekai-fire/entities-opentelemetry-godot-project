@@ -1,0 +1,12 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="otel-guest"
+config/features=PackedStringArray("4.7")
+
+[sandbox]
+
+toolchain/docker_enabled=false
+binary_translation/enabled=false

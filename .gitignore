@@ -1,0 +1,7 @@
+/.pixi/
+/third_party/
+/gen/
+/build/
+/stores/
+/project/.godot/
+/project/addons/
