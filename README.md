@@ -16,8 +16,9 @@ return the request bytes. Guests have no sockets, so the host posts them.
 
 The build fetches the schema and protobuf at pinned commits, generates the code, and cross-builds
 `telemetry.elf` and `telemetry_planted.elf` (the same guest with three fields renumbered) against the
-manifest's `5-repository/riscv64-sysroot` and `contract-guest-runtime`'s sandbox API. Two builds give
-the same bytes.
+manifest's `5-repository/riscv64-sysroot` and `contract-guest-runtime`'s sandbox API. Both are built at
+double precision, as the pen's addon is, and name their 40-byte Variant in a `.sandbox_variant` section,
+which a single-precision host refuses at load. Two builds give the same bytes.
 
 ## Test
 
@@ -30,6 +31,6 @@ The run starts the three stores from pinned, sha256-checked releases. It then ma
 
 It exits 0 only when all three runs go that way. The posted bytes also go through `protoc --decode`.
 
-The pen's addon is double-precision, and godot-sandbox there corrupts numbers read out of a Dictionary
-or Array. The guest reads keys one at a time and numbers through packed arrays until the addon's fix
-lands.
+The pen's addon hands back numbers inside a Dictionary or Array as scoped indices, even to a guest of
+its own precision: read directly, an attribute sent as 12 comes back as 5. The guest reads keys one at a
+time and numbers through packed arrays until the addon's fix lands.

@@ -19,7 +19,7 @@ static Variant bytes(const std::vector<uint8_t> &data) {
 
 static std::string to_attributes(const Dictionary &dict, std::vector<telemetry::Attribute> &out) {
 	// A double-precision addon hands back container scalars as scoped indices, so numbers come
-	// through packed arrays; elements one at a time, since to_vector() assumes a 24-byte Variant.
+	// through packed arrays.
 	const Array keys = dict.keys().as_array();
 	const Array values = dict.values().as_array();
 	PackedArray<int64_t> ints(std::vector<int64_t>{});

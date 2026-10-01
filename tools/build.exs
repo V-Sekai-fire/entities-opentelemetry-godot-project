@@ -2,7 +2,8 @@
 #
 # Checks the tools, gets the riscv64 sysroot and the two pinned source trees, generates the OTLP
 # message code with protoc's upb plugins, cross-builds telemetry.elf and the planted
-# telemetry_planted.elf into project/, and imports the project when GODOT names an engine.
+# telemetry_planted.elf into project/ at double precision, as the pen's addon is, and imports the
+# project when GODOT names an engine.
 #
 #   --sysroot=<dir>   the riscv64 sysroot (else $RISCV64_SYSROOT, else the workspace's, else fetched)
 #   --jobs=N          build parallelism (default: the machine's cores)
@@ -126,7 +127,7 @@ defmodule Build do
     unless File.exists?(Path.join(dir, "build.ninja")) do
       run("cmake", ~w(-S #{Path.join(@root, "guest")} -B #{dir} -G Ninja
                      -DCMAKE_TOOLCHAIN_FILE=#{Path.join(sysroot, "toolchain.cmake")}
-                     -DCMAKE_BUILD_TYPE=Release -DSANDBOX_RISCV_EXT_V=OFF
+                     -DCMAKE_BUILD_TYPE=Release -DSANDBOX_RISCV_EXT_V=OFF -DDOUBLE_PRECISION=ON
                      -DOTLP_GEN=#{Path.join(@root, gen)} -DELF_NAME=#{name}
                      -DSANDBOX_API_ROOT=#{Path.join(@weft, "2-contract/guest-runtime/vendor/sandbox-api")}))
     end
