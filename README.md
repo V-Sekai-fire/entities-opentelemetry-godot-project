@@ -1,36 +1,21 @@
-# opentelemetry-godot-project
+# entities-opentelemetry-godot-project
 
-A godot-sandbox guest that encodes Godot's spans, logs and gauges as OTLP, tested round trip against the telemetry stores.
+A godot-sandbox guest that encodes the engine's spans, logs and gauges as OTLP, tested round trip against the telemetry stores.
 
-`project/telemetry.elf` is the C++ guest. Its OTLP messages are generated from the official `.proto`
-schema (v1.11.1) by `protoc` 36.2's upb generators, and the upb runtime is compiled in, so no encoder is
-written by hand. It keeps the archived module's API (`init_tracer_provider`, `start_span`,
-`start_span_with_parent`, `add_event`, `set_attributes`, `record_error`, `end_span`, `shutdown`) and adds
-`log`, `gauge`, `set_clock`, `seed_ids` and `export_traces` / `export_logs` / `export_metrics`, which
-return the request bytes. Guests have no sockets, so the host posts them.
+## What it is for
 
-## Build
+The guest's OTLP messages are generated from the official schema with `protoc`'s upb generators, so no encoder is written by hand. Guests have no sockets, so the guest returns request bytes and the host posts them. The test passes only when the guest as built round-trips and the planted failures fail.
 
-    pixi install
-    pixi run sh -c 'PATH=<clang with a riscv64 target>:$PATH elixir tools/build.exs'
+## Build and run
 
-The build fetches the schema and protobuf at pinned commits, generates the code, and cross-builds
-`telemetry.elf` and `telemetry_planted.elf` (the same guest with three fields renumbered) against the
-manifest's `5-repository/riscv64-sysroot` and `contract-guest-runtime`'s sandbox API. Both are built at
-double precision, as the pen's addon is, and name their 40-byte Variant in a `.sandbox_variant` section,
-which a single-precision host refuses at load. Two builds give the same bytes.
+With a `clang++` that has a riscv64 target on `PATH`:
 
-## Test
+```sh
+pixi install
+pixi run elixir tools/build.exs
+GODOT=<an engine that loads the godot_sandbox addon> tools/run_tests.sh
+```
 
-    GODOT=<an engine that loads the pen's godot_sandbox addon> tools/run_tests.sh
+## Licence
 
-The run starts the three stores from pinned, sha256-checked releases. It then makes three runs:
-- **as built:** a span, a log and a gauge each pass a unit, a falsifiable and an identity test;
-- **planted wrong-field guest:** the three unit tests must fail;
-- **as built, posted to a closed port:** the three unit tests must fail.
-
-It exits 0 only when all three runs go that way. The posted bytes also go through `protoc --decode`.
-
-The pen's addon hands back numbers inside a Dictionary or Array as scoped indices, even to a guest of
-its own precision: read directly, an attribute sent as 12 comes back as 5. The guest reads keys one at a
-time and numbers through packed arrays until the addon's fix lands.
+MIT; see `LICENSE`.
